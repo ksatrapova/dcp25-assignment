@@ -2,10 +2,10 @@
 
 - [Assignment Brief](assignment.md)
 
-Name:
+Name: Karla Satrapova
 
-Student Number: 
-
+Student Number: C24744861
+ 
 # Screenshots
 
 # Description of the project
