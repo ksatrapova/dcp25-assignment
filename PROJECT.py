@@ -9,13 +9,12 @@ import pandas as pd
 from pathlib import Path
 
 # =============================================================================
-# DATABASE AND PARSING CLASSES
+# DATABASE AND PARSING CLASSES 
 # =============================================================================
 
 class ABCParser:
     """
-    Parses ABC notation files A UZ MI JEBE Z TOHO
-    
+    Parses ABC notation files and extracts tune metadata
     """
     
     def __init__(self):
@@ -27,7 +26,9 @@ class ABCParser:
         self.source_pattern = re.compile(r'^S:(.+)$', re.MULTILINE)
     
     def parse_file(self, file_path, book_number):
-        
+        """
+        Parse a single ABC file and extract all tunes
+        """
         tunes = []
         
         try:
@@ -80,11 +81,11 @@ class ABCParser:
 
 class TuneDatabase:
     """
-    SQLite database manager for storing and querying ABC tunes.
+    SQLite database manager for storing and querying ABC tunes
     """
     
     def __init__(self, db_path='tunes.db'):
-        """Initialize database connection and create table if needed."""
+        """Initialize database connection and create table if needed"""
         self.conn = sqlite3.connect(db_path)
         self.conn.execute('''
             CREATE TABLE IF NOT EXISTS tunes (
@@ -102,7 +103,9 @@ class TuneDatabase:
         self.conn.commit()
     
     def insert_tunes(self, tunes):
-       
+        """
+        Insert multiple tunes into the database
+        """
         cursor = self.conn.cursor()
         for tune in tunes:
             cursor.execute('''
@@ -122,7 +125,7 @@ class TuneDatabase:
         self.conn.commit()
     
     def get_dataframe(self):
-
+        
         return pd.read_sql("SELECT * FROM tunes ORDER BY id", self.conn)
     
     def close(self):
@@ -131,36 +134,60 @@ class TuneDatabase:
 
 
 # =============================================================================
-# TESTING CODE
+# FILE LOADING UTILITIES 
 # =============================================================================
 
-if __name__ == "__main__":
-    print("\nDatabase Foundation")
-    print("=" * 50)
+def load_all_abc_files(base_dir='abc_books'):
+
+    parser = ABCParser()
+    all_tunes = []
+    base_path = Path(base_dir)
     
-    # Test with sample data
-    sample_tune = [{
-        'title': 'Test Jig',
-        'rhythm_type': 'Jig',
-        'key': 'Gmaj',
-        'composer': 'Trad.',
-        'source': 'Test Collection',
-        'book_number': 1,
-        'file_name': 'test.abc',
-        'content': 'X:1\nT:Test Jig\nR:Jig\nK:Gmaj'
-    }]
+    # Check if directory exists
+    if not base_path.exists():
+        print(f"Warning: Directory '{base_dir}' not found")
+        return all_tunes
     
-    # Initialize database
-    db = TuneDatabase('test_day1.db')
+    # Iterate through numbered directories
+    for item in sorted(base_path.iterdir()):
+        if item.is_dir() and item.name.isdigit():
+            book_number = int(item.name)
+            print(f"  Loading book {book_number}...")
+            
+            # Parse all .abc files in this book directory
+            for abc_file in item.glob('*.abc'):
+                tunes = parser.parse_file(str(abc_file), book_number)
+                all_tunes.extend(tunes)
+                print(f"    - {abc_file.name}: {len(tunes)} tunes")
     
-    # Insert sample tune
-    db.insert_tunes(sample_tune)
+    return all_tunes
+
+
+# =============================================================================
+# DATA FILTERING FUNCTIONS 
+# =============================================================================
+
+def get_tunes_by_book(df, book_number):
+    """
+    Filter by book number.
+    """
     
-    # Retrieve and display
-    df = db.get_dataframe()
-    print(f"\nDatabase initialized with {len(df)} tune(s)")
-    print("\nSample data:")
-    print(df[['title', 'rhythm_type', 'key', 'composer']].to_string())
+    return df[df['book_number'] == book_number]
+
+
+def get_tunes_by_type(df, tune_type):
+    """
+    Filter by rhythm type (case-insensitive partial match)
     
-    db.close()
-    print("\n hahahahaha Database foundation working")
+    """
+    return df[df['rhythm_type'].str.contains(tune_type, case=False, na=False)]
+
+
+def search_tunes(df, search_term):
+    """
+    Search by title 
+
+    """
+    return df[df['title'].str.contains(search_term, case=False, na=False)]
+
+
