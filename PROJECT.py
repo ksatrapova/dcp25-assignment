@@ -128,13 +128,14 @@ def search_tunes(df, search_term):
 tunes_df = None         
 
 # UI state
-query_mode = "all"       # Current filter mode: "all", "book", "type", or "title"
+query_mode = "all"       # Current filter mode: "all", "book", "type","analysis" or "title"
 query_value = ""         # Current search/filter text
 scroll_offset = 0        # Vertical scroll position for tune list
 status_message = "ABC Tune Explorer - Select a filter mode"
 is_dragging_scrollbar = False  # Track if user is dragging scrollbar
 drag_start_y = 0         # Y position where drag started
-drag_start_scroll = 0    # Scroll offset when drag started
+drag_start_scroll = 0    # scroll offset when drag started
+analysis_text = ""       # output shown when in analysis mode
 
 # UI dimensions
 WINDOW_WIDTH = 900
@@ -215,7 +216,8 @@ def draw_filter_buttons():
         ("All Tunes", "all"),
         ("By Book", "book"),
         ("By Type", "type"),
-        ("By Title", "title")
+        ("By Title", "title"),
+        ("Analysis", "analysis")
     ]
     
     py5.text_size(14)
@@ -281,6 +283,35 @@ def draw_results_list():
     results_y = HEADER_HEIGHT + FILTER_SECTION_HEIGHT
     results_height = WINDOW_HEIGHT - HEADER_HEIGHT - FILTER_SECTION_HEIGHT - FOOTER_HEIGHT
     
+        # If in analysis mode, draw analysis text instead of a list
+    if query_mode == "analysis":
+        py5.fill(244,224,225)
+        py5.no_stroke()
+        py5.rect(0, results_y, WINDOW_WIDTH, RESULTS_HEADER_HEIGHT)
+
+        py5.fill(*COLOR_TEXT)
+        py5.text_size(14)
+        py5.text_align(py5.LEFT, py5.CENTER)
+        py5.text("Dataset analysis", 20, results_y + RESULTS_HEADER_HEIGHT / 2)
+
+        # Draw the analysis text inside the list area
+        analysis = get_analysis_text()
+        list_y = results_y + RESULTS_HEADER_HEIGHT
+        list_height = results_height - RESULTS_HEADER_HEIGHT
+
+        py5.clip(0, list_y, WINDOW_WIDTH, list_height)
+        py5.fill(*COLOR_TEXT_LIGHT)
+        py5.text_size(13)
+        py5.text_align(py5.LEFT, py5.TOP)
+
+        y = list_y + 10
+        for line in analysis.splitlines():
+            py5.text(line, 30, y)
+            y += 18
+
+        py5.no_clip()
+        return
+    
     # Apply filters based on current mode
     filtered_df = get_filtered_tunes()
     
@@ -335,6 +366,33 @@ def draw_results_list():
     
     # Remove clipping
     py5.no_clip()
+    
+def get_analysis_text():
+    """Build a multi-line analysis summary of the tunes dataset."""
+    global tunes_df
+
+    if tunes_df is None or tunes_df is ... or getattr(tunes_df, "empty", False):
+        return "No tunes loaded for analysis."
+
+    total = len(tunes_df)
+
+    # Top 3 rhythm types
+    type_counts = tunes_df["rhythm_type"].value_counts().head(3)
+    # Top 3 keys
+    key_counts = tunes_df["key"].value_counts().head(3)
+
+    lines = []
+    lines.append(f"Total tunes: {total}")
+    lines.append("")
+    lines.append("Top rhythm types:")
+    for t, c in type_counts.items():
+        lines.append(f"  - {t}: {c}")
+    lines.append("")
+    lines.append("Top keys:")
+    for k, c in key_counts.items():
+        lines.append(f"  - {k}: {c}")
+
+    return "\n".join(lines)
 
 
 def draw_scrollbar():
@@ -489,12 +547,13 @@ def mouse_pressed():
     button_height = 40
     button_spacing = 15
     
-    modes = ["all", "book", "type", "title"]
+    modes = ["all", "book", "type", "title","analysis"]
     mode_labels = {
         "all": "Showing all tunes",
         "book": "Filter by book number",
         "type": "Filter by tune type",
-        "title": "Search by title"
+        "title": "Search by title",
+        "analysis": "Showing dataset analysis"
     }
     
     for i, mode in enumerate(modes):
