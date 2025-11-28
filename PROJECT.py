@@ -10,6 +10,7 @@ import py5
 # =============================================================================
 
 class ABCParser:
+    """Parser for ABC notation files and extraction of tune metadata."""
     def __init__(self):
         self.title_pattern = re.compile(r'^T:(.+)$', re.MULTILINE)
         self.rhythm_pattern = re.compile(r'^R:(.+)$', re.MULTILINE)
@@ -17,6 +18,7 @@ class ABCParser:
         self.composer_pattern = re.compile(r'^C:(.+)$', re.MULTILINE)
         self.source_pattern = re.compile(r'^S:(.+)$', re.MULTILINE)
     def parse_file(self, file_path, book_number):
+        """Parse a file into a list of tune dictionaries"""
         tunes = []
         try:
             # Read the entire file content
@@ -43,6 +45,7 @@ class ABCParser:
         return tunes
 
 class TuneDatabase:
+    """ SQLite database for storing and querying tunes"""
     def __init__(self, db_path='tunes.db'):
         self.conn = sqlite3.connect(db_path)
         self.conn.execute(''' 
@@ -60,6 +63,7 @@ class TuneDatabase:
         ''')
         self.conn.commit()
     def insert_tunes(self, tunes):
+        """Insert tune dictionaries into the database"""
         cursor = self.conn.cursor()
         for tune in tunes:
             cursor.execute('''
@@ -72,14 +76,17 @@ class TuneDatabase:
             ))
         self.conn.commit()
     def get_dataframe(self):
+        """Return all tunes as a pandas DataFrame"""
         return pd.read_sql("SELECT * FROM tunes ORDER BY id", self.conn)
     def close(self):
-        self.conn.close()   #Close database connection
+        """Close the  database conection"""
+        self.conn.close()   
 # =============================================================================
 # FILE LOADING UTILITIES 
 # =============================================================================
 
 def load_all_abc_files(base_dir='abc_books'):
+    """looad and parse all files under the directory"""
     parser = ABCParser()
     all_tunes = []
     base_path = Path(base_dir)
@@ -101,15 +108,15 @@ def load_all_abc_files(base_dir='abc_books'):
 # =============================================================================
 
 def get_tunes_by_book(df, book_number):
-    #Filter by book number
+    """Filter by book number"""
     return df[df['book_number'] == book_number]
 
 def get_tunes_by_type(df, tune_type):
-    #Filter by rhythm type - case insensitive 
+    """Filter by rhythm type"""
     return df[df['rhythm_type'].str.contains(tune_type, case=False, na=False)]
 
 def search_tunes(df, search_term):
-    #Search by title 
+    """Search by title""" 
     return df[df['title'].str.contains(search_term, case=False, na=False)]
 
 # =============================================================================
@@ -117,8 +124,8 @@ def search_tunes(df, search_term):
 # =============================================================================
 
 
-# Main data
-tunes_df = None          # DataFrame containing all tunes
+ # DataFrame containing all tunes
+tunes_df = None         
 
 # UI state
 query_mode = "all"       # Current filter mode: "all", "book", "type", or "title"
@@ -137,11 +144,11 @@ FILTER_SECTION_HEIGHT = 120
 RESULTS_HEADER_HEIGHT = 40
 FOOTER_HEIGHT = 40
 ITEM_HEIGHT = 70
-SCROLL_SPEED = 40
+SCROLL_SPEED = 20
 SCROLLBAR_WIDTH = 12
 SCROLLBAR_MARGIN = 5
 
-# Colors (minimalistic palette)
+# Colors 
 COLOR_BG = 	(253,228,242)      
 COLOR_HEADER = (218,150,155)          
 COLOR_BUTTON = (218,150,155)       
@@ -157,13 +164,13 @@ COLOR_ITEM_ALT = (249,206,231)
 # =============================================================================
 
 def setup():
-    #Initialize the py5 sketch
+    """Initialize the py5 sketch"""
     py5.size(WINDOW_WIDTH, WINDOW_HEIGHT)
     py5.background(*COLOR_BG)
 
 
 def draw():
-    #Main draw loop - renders the entire UI
+    """Main draw loop which renders the entire UI"""
     py5.background(*COLOR_BG)
     
     # Draw header bar
@@ -186,7 +193,7 @@ def draw():
 
 
 def draw_header():
-    #Draw the top header bar
+    """Draw the top header bar + title"""
     py5.fill(*COLOR_HEADER)
     py5.no_stroke()
     py5.rect(0, 0, WINDOW_WIDTH, HEADER_HEIGHT)
@@ -198,7 +205,7 @@ def draw_header():
 
 
 def draw_filter_buttons():
-    #Draw the filter mode selection buttons
+    """Draw the filter buttons"""
     button_y = HEADER_HEIGHT + 20
     button_width = 120
     button_height = 40
@@ -217,13 +224,13 @@ def draw_filter_buttons():
     for i, (label, mode) in enumerate(modes):
         x = 20 + i * (button_width + button_spacing)
         
-        # Determine button color based on active state
+        # Determine button color
         if query_mode == mode:
             py5.fill(*COLOR_BUTTON_ACTIVE)
         else:
             py5.fill(*COLOR_BUTTON)
         
-        # Draw button with rounded corners
+        # Draw button, rounded corners
         py5.stroke(200)
         py5.stroke_weight(1)
         py5.rect(x, button_y, button_width, button_height, 5)
@@ -238,17 +245,17 @@ def draw_filter_buttons():
 
 
 def draw_search_input():
-    #Draw the search input box and instructions
+    """search input box and instructions"""
     input_y = HEADER_HEIGHT + 75
     input_height = 35
     
-    # Draw input box background
+    #input box background
     py5.fill(255)
     py5.stroke(200)
     py5.stroke_weight(1)
     py5.rect(20, input_y, WINDOW_WIDTH - 40, input_height, 5)
     
-    # Display appropriate placeholder or input text
+    # Display placeholder or input text
     py5.fill(*COLOR_TEXT_LIGHT)
     py5.text_size(13)
     py5.text_align(py5.LEFT, py5.CENTER)
@@ -267,7 +274,7 @@ def draw_search_input():
 
 
 def draw_results_list():
-    #Draw the scrollable list of filtered tunes
+    """Draw the scrollable list of filtered tunes accordin to filters"""
     global tunes_df
     
     # Calculate results area position
@@ -277,7 +284,7 @@ def draw_results_list():
     # Apply filters based on current mode
     filtered_df = get_filtered_tunes()
     
-    # Draw results header with count
+    #results header with count
     py5.fill(244,224,225)
     py5.no_stroke()
     py5.rect(0, results_y, WINDOW_WIDTH, RESULTS_HEADER_HEIGHT)
@@ -298,12 +305,12 @@ def draw_results_list():
     y = list_y - scroll_offset
     
     for i, row in enumerate(filtered_df.itertuples()):
-        # Only draw visible items (optimization)
+        # Only draw visible items 
         if y + ITEM_HEIGHT < list_y or y > list_y + list_height:
             y += ITEM_HEIGHT
             continue
         
-        # Alternate row colors for better readability
+        # Alternate row colors 
         if i % 2 == 0:
             py5.fill(*COLOR_ITEM_BG)
         else:
@@ -312,13 +319,13 @@ def draw_results_list():
         py5.no_stroke()
         py5.rect(20, y, WINDOW_WIDTH - 40, ITEM_HEIGHT - 5, 3)
         
-        # Draw tune title (bold)
+        # tune title 
         py5.fill(*COLOR_TEXT)
         py5.text_size(15)
         py5.text_align(py5.LEFT, py5.TOP)
         py5.text(row.title, 30, y + 10)
         
-        # Draw tune metadata (smaller, lighter text)
+        #tune metadata 
         py5.fill(*COLOR_TEXT_LIGHT)
         py5.text_size(12)
         metadata = f"Type: {row.rhythm_type}  |  Key: {row.key}  |  Composer: {row.composer}  |  Book: {row.book_number}"
@@ -331,7 +338,8 @@ def draw_results_list():
 
 
 def draw_scrollbar():
-    #Draw the scrollbar on the right side of the results area
+    """Draw scrollbar"""
+    
     # Calculate results area position
     results_y = HEADER_HEIGHT + FILTER_SECTION_HEIGHT + RESULTS_HEADER_HEIGHT
     results_height = WINDOW_HEIGHT - HEADER_HEIGHT - FILTER_SECTION_HEIGHT - FOOTER_HEIGHT - RESULTS_HEADER_HEIGHT
@@ -355,7 +363,7 @@ def draw_scrollbar():
     
     # Calculate scrollbar thumb size and position
     visible_ratio = results_height / total_content_height
-    thumb_height = max(30, scrollbar_track_height * visible_ratio)  # Minimum 30px
+    thumb_height = max(30, scrollbar_track_height * visible_ratio)  
     
     max_scroll = total_content_height - results_height
     scroll_ratio = scroll_offset / max_scroll if max_scroll > 0 else 0
@@ -365,15 +373,15 @@ def draw_scrollbar():
     
     # Draw scrollbar thumb
     if is_dragging_scrollbar:
-        py5.fill(109,75,78)  # Darker when dragging
+        py5.fill(109,75,78)  # when dragging
     else:
-        py5.fill(174,120,124)  # Normal 
+        py5.fill(174,120,124)  
     
     py5.rect(scrollbar_x, thumb_y, SCROLLBAR_WIDTH, thumb_height, 6)
 
 
 def draw_footer():
-   #Draw the footer with status message
+    """footer with status message"""
     footer_y = WINDOW_HEIGHT - FOOTER_HEIGHT
     
     py5.fill(244,224,225)
@@ -387,6 +395,7 @@ def draw_footer():
 
 
 def get_filtered_tunes():
+    """return filtered tunes thru mode and value"""
     
     global tunes_df
     
@@ -414,7 +423,7 @@ def get_filtered_tunes():
 # =============================================================================
 
 def key_pressed():
-    #Handle keyboard input
+    """handle keyboard input, updates"""
     global query_value, status_message, scroll_offset
     
     # Only process input for modes that need it
@@ -432,7 +441,7 @@ def key_pressed():
 
 
 def mouse_pressed():
-    #Handle mouse clicks on buttons and scrollbar
+    """Handle mouse clicks on buttons and scrollbar"""
     global query_mode, query_value, status_message, scroll_offset
     global is_dragging_scrollbar, drag_start_y, drag_start_scroll
     
@@ -462,7 +471,7 @@ def mouse_pressed():
             drag_start_scroll = scroll_offset
             return  # Don't process button clicks
         
-        # Check if clicking on scrollbar track (jump to position)
+        # Check if clicking on scrollbar track, jump to position
         if (scrollbar_x <= py5.mouse_x <= scrollbar_x + SCROLLBAR_WIDTH and
             results_y <= py5.mouse_y <= results_y + results_height):
             # Jump scroll to clicked position
@@ -501,7 +510,7 @@ def mouse_pressed():
 
 
 def mouse_dragged():
-    #Handle mouse dragging for scrollbar
+    """Handle mouse dragging for scrollbar"""
     global scroll_offset, is_dragging_scrollbar
     
     if not is_dragging_scrollbar:
@@ -534,13 +543,13 @@ def mouse_dragged():
 
 
 def mouse_released():
-    #Handle mouse release to stop scrollbar dragging
+    """WHEN mouse releaseD stop scrollbar dragging"""
     global is_dragging_scrollbar
     is_dragging_scrollbar = False
 
 
 def mouse_wheel(event):
-    #Handle mouse wheel scrolling
+    """Handle mouse wheel scrolling"""
     global scroll_offset
     
     # Get the filtered results to calculate max scroll
@@ -561,13 +570,20 @@ def mouse_wheel(event):
 # =============================================================================
 
 if __name__ == "__main__":
+    """"DOES ALL THE WORK, entry point"""
+    
     print("Loading ABC tune database...")
     
-    # Load all ABC files from directory structure
+    # Load all files from directory structure
     all_tunes = load_all_abc_files()
     
     # Store tunes in database
     db = TuneDatabase()
+
+    # Clear existing tunes so each run
+    db.conn.execute("DELETE FROM tunes")
+    db.conn.commit()
+    
     db.insert_tunes(all_tunes)
     
     # Load tunes into DataFrame for UI
