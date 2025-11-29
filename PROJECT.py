@@ -273,6 +273,8 @@ def draw_search_input():
     elif query_mode == "title":
         display_text = query_value if query_value else "Type part of the title..."
         py5.text(display_text, 30, input_y + input_height / 2)
+    elif query_mode == "analysis":
+        py5.text("Showing analysis of all data provided by tunepal", 30, input_y + input_height / 2)
 
 
 def draw_results_list():
@@ -371,7 +373,7 @@ def get_analysis_text():
     """Build a multi-line analysis summary of the tunes dataset."""
     global tunes_df
 
-    if tunes_df is None or tunes_df is ... or getattr(tunes_df, "empty", False):
+    if tunes_df is None or getattr(tunes_df, "empty", False):
         return "No tunes loaded for analysis."
 
     total = len(tunes_df)
@@ -380,9 +382,17 @@ def get_analysis_text():
     type_counts = tunes_df["rhythm_type"].value_counts().head(3)
     # Top 3 keys
     key_counts = tunes_df["key"].value_counts().head(3)
+    
+    # Tunes per book
+    book_counts = tunes_df["book_number"].value_counts().sort_index()
+    top_books = book_counts.head(2)
+
+    # Approx average title length (in characters)
+    avg_title_len = int(tunes_df["title"].astype(str).str.len().mean())
 
     lines = []
     lines.append(f"Total tunes: {total}")
+    lines.append(f"Average title length: ~{avg_title_len} characters")
     lines.append("")
     lines.append("Top rhythm types:")
     for t, c in type_counts.items():
@@ -391,6 +401,10 @@ def get_analysis_text():
     lines.append("Top keys:")
     for k, c in key_counts.items():
         lines.append(f"  - {k}: {c}")
+    lines.append("")
+    lines.append("Tunes per book:")
+    for book, c in top_books.items():
+        lines.append(f"  - Book {book}: {c} tunes")
 
     return "\n".join(lines)
 
